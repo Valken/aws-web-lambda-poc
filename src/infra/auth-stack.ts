@@ -17,9 +17,12 @@ export class AuthStack extends cdk.Stack {
       selfSignUpEnabled: false,
       signInAliases: { email: true },
       standardAttributes: { email: { required: true, mutable: true } },
+      featurePlan: cognito.FeaturePlan.ESSENTIALS,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
     const domain = userPool.addDomain('HostedUiDomain', { cognitoDomain: { domainPrefix } });
+    const cfnDomain = domain.node.defaultChild as cognito.CfnUserPoolDomain;
+    cfnDomain.managedLoginVersion = 2;
     const apiReadScope = new cognito.ResourceServerScope({
       scopeName: 'read',
       scopeDescription: 'Read API data',
@@ -49,6 +52,12 @@ export class AuthStack extends cdk.Stack {
         logoutUrls: ['http://localhost:3000'],
       },
     });
+    const branding = new cognito.CfnManagedLoginBranding(this, 'ManagedLoginBranding', {
+      clientId: client.userPoolClientId,
+      userPoolId: userPool.userPoolId,
+      useCognitoProvidedValues: true,
+    });
+    branding.node.addDependency(cfnDomain);
 
     this.clientId = client.userPoolClientId;
     this.clientArn = `arn:${this.partition}:cognito-idp:${this.region}:${this.account}:userpoolclient/${this.clientId}`;

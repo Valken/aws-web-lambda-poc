@@ -1,6 +1,6 @@
 # AWS Lambda Web Functions POC
 
-This proof of concept runs an all-TypeScript, server-rendered Express application directly as an AWS Lambda Web Function. Amazon CloudFront is the public entry point and uses Origin Access Control to sign requests to an IAM-authenticated Lambda Web Function endpoint. Amazon Cognito Hosted UI provides OIDC authorization-code authentication with PKCE; identity and tokens remain in an encrypted, `HttpOnly` session cookie.
+This proof of concept runs an all-TypeScript, server-rendered Express application directly as an AWS Lambda Web Function. Amazon CloudFront is the public entry point and uses Origin Access Control to sign requests to an IAM-authenticated Lambda Web Function endpoint. Amazon Cognito Managed Login provides OIDC authorization-code authentication with PKCE; identity and tokens remain in an encrypted, `HttpOnly` session cookie.
 
 The CDK application is split into two stacks to avoid a CloudFormation dependency cycle: `AuthStack` creates Cognito, then `WebAppStack` creates the Web Function and CloudFront distribution and registers the final CloudFront callback URLs through a scoped custom resource.
 
@@ -29,7 +29,7 @@ npm install
 
 ### Deploy the auth stack
 
-The auth-only deployment creates the Cognito user pool, Hosted UI domain, and local OAuth client without creating CloudFront or Lambda resources:
+The auth-only deployment creates the Cognito user pool, Managed Login domain, default branding style, and local OAuth client without creating CloudFront or Lambda resources:
 
 ```sh
 npx cdk deploy AuthStack \
@@ -96,7 +96,7 @@ export COGNITO_AUTH_DOMAIN="$(aws cloudformation describe-stacks \
   --output text)"
 ```
 
-`COGNITO_ISSUER` is the user-pool issuer used for JWT validation and OIDC discovery. `COGNITO_AUTH_DOMAIN` is the Hosted UI domain used by Cognito’s authorization and logout endpoints. Verify the issuer before starting the app:
+`COGNITO_ISSUER` is the user-pool issuer used for JWT validation and OIDC discovery. `COGNITO_AUTH_DOMAIN` is the Managed Login domain used by Cognito’s authorization and logout endpoints. Verify the issuer before starting the app:
 
 ```sh
 curl --fail --silent --show-error \
@@ -148,7 +148,7 @@ npx cdk deploy --all \
   -c sessionSecret="$(openssl rand -base64 32)"
 ```
 
-The outputs include the CloudFront URL, Cognito issuer, Hosted UI URL, OAuth callback URL, client ID, and raw Lambda Web Function endpoint. Self-sign-up remains disabled; create users with `admin-create-user` before visiting the CloudFront URL and choosing **Sign in with Cognito**.
+The outputs include the CloudFront URL, Cognito issuer, Managed Login URL, OAuth callback URL, client ID, and raw Lambda Web Function endpoint. Self-sign-up remains disabled; create users with `admin-create-user` before visiting the CloudFront URL and choosing **Sign in with Cognito**.
 
 The Web Function endpoint is configured with `IamAuth`, so a direct unsigned request should fail:
 
