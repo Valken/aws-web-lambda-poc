@@ -1,0 +1,33 @@
+{
+  "name": "aws-web-lambda-poc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run clean && tsc -p tsconfig.json && npm run bundle",
+    "bundle": "mkdir -p dist/web && cp -R dist/app/. dist/web/ && cp package.json package-lock.json dist/web/ && cd dist/web && npm install --omit=dev --ignore-scripts",
+    "clean": "rm -rf dist cdk.out",
+    "start": "AWS_LAMBDA_HTTP_ENDPOINT=127.0.0.1:3000 node --enable-source-maps dist/app/server.js",
+    "cdk": "cdk",
+    "synth": "npm run build && cdk synth",
+    "deploy": "npm run build && cdk deploy --require-approval never",
+    "destroy": "cdk destroy --force"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.900.0",
+    "cookie": "^1.0.2",
+    "express": "^5.1.0",
+    "jose": "^6.1.0"
+  },
+  "devDependencies": {
+    "@types/cookie": "^1.0.0",
+    "@types/express": "^5.0.5",
+    "@types/node": "^24.10.0",
+    "aws-cdk": "^2.1146.1",
+    "aws-cdk-lib": "^2.233.0",
+    "constructs": "^10.4.2",
+    "esbuild": "^0.25.11",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

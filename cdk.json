@@ -1,0 +1,7 @@
+{
+  "app": "node --enable-source-maps dist/infra/app.js",
+  "context": {
+    "aws-cdk:enable-path-metadata": false,
+    "aws-cdk:enable-version-reporting": false
+  }
+}
