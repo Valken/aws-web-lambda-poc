@@ -73,7 +73,7 @@ export class WebAppStack extends cdk.Stack {
       },
       serviceConfig: { executionRoleArn: executionRole.roleArn, environmentVariables },
     });
-    revision.addDependency(webFunction);
+    revision.addResourceDependency(webFunction);
     revision.node.addDependency(executionRole, upload);
     const endpoint = new lambda.CfnWebFunctionEndpoint(this, 'WebFunctionEndpoint', {
       functionName: webFunction.functionName,
@@ -82,7 +82,7 @@ export class WebAppStack extends cdk.Stack {
       authType: 'IamAuth',
       revisionWeights: [{ revisionId: revision.attrRevisionId, weight: 100 }],
     });
-    endpoint.addDependency(revision);
+    endpoint.addResourceDependency(revision);
     const viewerHostHeaderFunction = new cloudfront.Function(this, 'ViewerHostHeaderFunction', {
       code: cloudfront.FunctionCode.fromInline(
         'function handler(event) { var request = event.request; request.headers["x-forwarded-host"] = { value: request.headers.host.value }; return request; }',
@@ -117,8 +117,8 @@ export class WebAppStack extends cdk.Stack {
         viewerCertificate: { cloudFrontDefaultCertificate: true },
       },
     });
-    distribution.addDependency(endpoint);
-    originAccessControl.addDependency(endpoint);
+    distribution.addResourceDependency(endpoint);
+    originAccessControl.addResourceDependency(endpoint);
 
     const cloudFrontUrl = `https://${distribution.attrDomainName}`;
     new customResources.AwsCustomResource(this, 'RegisterCloudFrontCallbacks', {
@@ -174,8 +174,8 @@ export class WebAppStack extends cdk.Stack {
         }],
       },
     });
-    policy.addDependency(distribution);
-    policy.addDependency(endpoint);
+    policy.addResourceDependency(distribution);
+    policy.addResourceDependency(endpoint);
 
     new cdk.CfnOutput(this, 'CloudFrontUrl', { value: cloudFrontUrl });
     new cdk.CfnOutput(this, 'CognitoIssuer', { value: props.auth.issuer });
