@@ -33,6 +33,27 @@ function html(title: string, body: string): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{font:16px system-ui;max-width:720px;margin:4rem auto;padding:0 1rem}a,button{font:inherit}button{padding:.5rem 1rem}</style></head><body>${body}</body></html>`;
 }
 
+function escapeHtml(value: string): string {
+  const replacements: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return value.replace(/[&<>"']/g, (character) => replacements[character] ?? character);
+}
+
+function safeReturnTo(value: unknown): string {
+  if (typeof value !== 'string' || !value.startsWith('/')) return '/account';
+  try {
+    const url = new URL(value, 'https://app.invalid');
+    return url.origin === 'https://app.invalid' ? `${url.pathname}${url.search}${url.hash}` : '/account';
+  } catch {
+    return '/account';
+  }
+}
+
 async function discovery(): Promise<{ authorization_endpoint: string; token_endpoint: string; jwks_uri: string; end_session_endpoint?: string }> {
   const discoveryUrl = `${config.issuer}/.well-known/openid-configuration`;
   let response: globalThis.Response;
@@ -61,13 +82,18 @@ function clearCookie(response: Response, name: string): void {
   response.append('Set-Cookie', serialize(name, '', { ...cookieOptions, maxAge: 0 }));
 }
 
-async function currentSession(request: Request): Promise<Session | undefined> {
-  return readSessionCookie(cookies(request)[COOKIE_NAME], config.sessionSecret);
+async function currentSession(request: Request, response: Response): Promise<Session | undefined> {
+  const session = await readSessionCookie(cookies(request)[COOKIE_NAME], config.sessionSecret);
+  if (session && (!Number.isFinite(session.expiresAt) || session.expiresAt <= Date.now())) {
+    clearCookie(response, COOKIE_NAME);
+    return undefined;
+  }
+  return session;
 }
 
 app.get('/', async (_request, response) => {
-  const session = await currentSession(_request);
-  response.type('html').send(html('Lambda Web Functions POC', `<h1>Lambda Web Functions POC</h1><p>Node.js SSR behind CloudFront with Cognito OIDC.</p>${session ? `<p>Signed in as <strong>${session.email ?? session.sub}</strong>.</p><p><a href="/account">View account</a></p><form method="post" action="/logout"><button>Sign out</button></form>` : '<p><a href="/login">Sign in with Cognito</a></p>'}`));
+  const session = await currentSession(_request, response);
+  response.type('html').send(html('Lambda Web Functions POC', `<h1>Lambda Web Functions POC</h1><p>Node.js SSR behind CloudFront with Cognito OIDC.</p>${session ? `<p>Signed in as <strong>${escapeHtml(session.email ?? session.sub)}</strong>.</p><p><a href="/account">View account</a></p><form method="post" action="/logout"><button>Sign out</button></form>` : '<p><a href="/login">Sign in with Cognito</a></p>'}`));
 });
 
 app.get('/login', async (request, response, next) => {
@@ -77,7 +103,7 @@ app.get('/login', async (request, response, next) => {
       state: randomUrlValue(),
       nonce: randomUrlValue(),
       verifier: randomUrlValue(),
-      returnTo: typeof request.query.returnTo === 'string' && request.query.returnTo.startsWith('/') ? request.query.returnTo : '/account',
+      returnTo: safeReturnTo(request.query.returnTo),
     };
     setCookie(response, TRANSACTION_COOKIE, await createTransactionCookie(transaction, config.sessionSecret), 600);
     const url = new URL(oidc.authorization_endpoint);
@@ -122,6 +148,7 @@ app.get('/oauth2/callback', async (request, response, next) => {
     if (!tokenResponse.ok) throw new Error(`Token exchange failed with ${tokenResponse.status}`);
     const tokens = await tokenResponse.json() as { id_token?: string; access_token?: string; expires_in?: number };
     if (!tokens.id_token || !tokens.access_token) throw new Error('Token response did not contain required tokens');
+    const expiresIn = tokens.expires_in ?? 3600;
     const jwks = createRemoteJWKSet(new URL(oidc.jwks_uri));
     const verified = await jwtVerify(tokens.id_token, jwks, { issuer: config.issuer, audience: config.clientId });
     if (verified.payload.nonce !== transaction.nonce || typeof verified.payload.sub !== 'string') throw new Error('OIDC nonce or subject validation failed');
@@ -131,9 +158,9 @@ app.get('/oauth2/callback', async (request, response, next) => {
       name: typeof verified.payload.name === 'string' ? verified.payload.name : undefined,
       idToken: tokens.id_token,
       accessToken: tokens.access_token,
-      expiresAt: Date.now() + (tokens.expires_in ?? 3600) * 1000,
+      expiresAt: Date.now() + expiresIn * 1000,
     };
-    setCookie(response, COOKIE_NAME, await createSessionCookie(session, config.sessionSecret));
+    setCookie(response, COOKIE_NAME, await createSessionCookie(session, config.sessionSecret), expiresIn);
     clearCookie(response, TRANSACTION_COOKIE);
     response.redirect(transaction.returnTo);
   } catch (error) {
@@ -142,12 +169,12 @@ app.get('/oauth2/callback', async (request, response, next) => {
 });
 
 app.get('/account', async (request, response) => {
-  const session = await currentSession(request);
+  const session = await currentSession(request, response);
   if (!session) {
     response.redirect('/login?returnTo=%2Faccount');
     return;
   }
-  response.type('html').send(html('Your account', `<h1>Your account</h1><dl><dt>Subject</dt><dd>${session.sub}</dd><dt>Email</dt><dd>${session.email ?? 'Not provided'}</dd><dt>Name</dt><dd>${session.name ?? 'Not provided'}</dd></dl><p><a href="/">Home</a></p><form method="post" action="/logout"><button>Sign out</button></form>`));
+  response.type('html').send(html('Your account', `<h1>Your account</h1><dl><dt>Subject</dt><dd>${escapeHtml(session.sub)}</dd><dt>Email</dt><dd>${escapeHtml(session.email ?? 'Not provided')}</dd><dt>Name</dt><dd>${escapeHtml(session.name ?? 'Not provided')}</dd></dl><p><a href="/">Home</a></p><form method="post" action="/logout"><button>Sign out</button></form>`));
 });
 
 app.post('/logout', async (request, response, next) => {
