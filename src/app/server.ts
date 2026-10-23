@@ -2,6 +2,7 @@ import express, { type Request, type Response } from 'express';
 import { parse, serialize } from 'cookie';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { loadConfig } from './config.js';
+import { safeReturnTo } from './return-to.js';
 import {
   COOKIE_NAME,
   TRANSACTION_COOKIE,
@@ -42,16 +43,6 @@ function escapeHtml(value: string): string {
     "'": '&#39;',
   };
   return value.replace(/[&<>"']/g, (character) => replacements[character] ?? character);
-}
-
-function safeReturnTo(value: unknown): string {
-  if (typeof value !== 'string' || !value.startsWith('/')) return '/account';
-  try {
-    const url = new URL(value, 'https://app.invalid');
-    return url.origin === 'https://app.invalid' ? `${url.pathname}${url.search}${url.hash}` : '/account';
-  } catch {
-    return '/account';
-  }
 }
 
 async function discovery(): Promise<{ authorization_endpoint: string; token_endpoint: string; jwks_uri: string; end_session_endpoint?: string }> {

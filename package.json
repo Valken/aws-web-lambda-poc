@@ -11,7 +11,8 @@
     "cdk": "cdk",
     "synth": "npm run build && cdk synth",
     "deploy": "npm run build && cdk deploy --require-approval never",
-    "destroy": "cdk destroy --force"
+    "destroy": "cdk destroy --force",
+    "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.900.0",
