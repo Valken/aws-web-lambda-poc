@@ -21,6 +21,11 @@ describe('safeReturnTo', () => {
     }
   });
 
+  it('rejects values long enough to overflow the transaction cookie', () => {
+    assert.equal(safeReturnTo(`/${'a'.repeat(1023)}`), `/${'a'.repeat(1023)}`);
+    assert.equal(safeReturnTo(`/${'a'.repeat(1024)}`), '/account');
+  });
+
   it('rejects paths that normalize to a protocol-relative URL', () => {
     for (const value of ['/..//evil.com', '/a/..//evil.com', '/.//evil.com', '/%2e%2e//evil.com', '/%2E%2E//evil.com']) {
       assert.equal(safeReturnTo(value), '/account', value);

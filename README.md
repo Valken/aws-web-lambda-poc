@@ -77,6 +77,12 @@ Build the application:
 npm run build
 ```
 
+Run the unit tests (type-checks `src/` and `test/`, then runs `node:test`):
+
+```sh
+npm test
+```
+
 Load the Cognito values from CloudFormation:
 
 ```sh
@@ -166,4 +172,4 @@ npx cdk destroy --all --force --region eu-west-1
 
 ## POC boundaries
 
-This repository intentionally excludes custom domains and certificates, WAF, CI/CD, a database, multi-region routing, and an automated test suite. Dynamic authenticated pages use CloudFront's managed disabled-cache policy; the app does not expose access or ID tokens to browser JavaScript.
+This repository intentionally excludes custom domains and certificates, WAF, CI/CD, a database, and multi-region routing. Automated tests are limited to unit tests for security-sensitive helpers such as login redirect validation (`npm test`). Dynamic authenticated pages use CloudFront's managed disabled-cache policy; the app does not expose access or ID tokens to browser JavaScript.

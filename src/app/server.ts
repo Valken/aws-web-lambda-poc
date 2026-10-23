@@ -153,7 +153,7 @@ app.get('/oauth2/callback', async (request, response, next) => {
     };
     setCookie(response, COOKIE_NAME, await createSessionCookie(session, config.sessionSecret), expiresIn);
     clearCookie(response, TRANSACTION_COOKIE);
-    response.redirect(transaction.returnTo);
+    response.redirect(safeReturnTo(transaction.returnTo));
   } catch (error) {
     next(error);
   }
@@ -162,7 +162,7 @@ app.get('/oauth2/callback', async (request, response, next) => {
 app.get('/account', async (request, response) => {
   const session = await currentSession(request, response);
   if (!session) {
-    response.redirect('/login?returnTo=%2Faccount');
+    response.redirect(`/login?returnTo=${encodeURIComponent(request.originalUrl)}`);
     return;
   }
   response.type('html').send(html('Your account', `<h1>Your account</h1><dl><dt>Subject</dt><dd>${escapeHtml(session.sub)}</dd><dt>Email</dt><dd>${escapeHtml(session.email ?? 'Not provided')}</dd><dt>Name</dt><dd>${escapeHtml(session.name ?? 'Not provided')}</dd></dl><p><a href="/">Home</a></p><form method="post" action="/logout"><button>Sign out</button></form>`));
