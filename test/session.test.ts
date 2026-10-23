@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { afterEach, describe, it, mock } from 'node:test';
 import { CompactEncrypt, decodeProtectedHeader } from 'jose';
 import { createHash } from 'node:crypto';
 import {
@@ -9,6 +9,7 @@ import {
   randomUrlValue,
   readSessionCookie,
   readTransactionCookie,
+  TRANSACTION_TTL_SECONDS,
   type OidcTransaction,
   type Session,
 } from '../src/app/session.js';
@@ -120,5 +121,35 @@ describe('transaction cookie', () => {
   it('rejects a tampered cookie', async () => {
     const cookie = await createTransactionCookie(transaction, SECRET);
     assert.equal(await readTransactionCookie(tamper(cookie, 3), SECRET), undefined);
+  });
+
+  describe('expiry', () => {
+    const start = 1_800_000_000_000;
+    const ttl = TRANSACTION_TTL_SECONDS * 1000;
+
+    afterEach(() => mock.timers.reset());
+
+    async function readAfter(elapsed: number): Promise<OidcTransaction | undefined> {
+      mock.timers.enable({ apis: ['Date'], now: start });
+      const cookie = await createTransactionCookie(transaction, SECRET);
+      mock.timers.setTime(start + elapsed);
+      return readTransactionCookie(cookie, SECRET);
+    }
+
+    it('accepts a cookie up to the TTL', async () => {
+      assert.deepEqual(await readAfter(ttl), transaction);
+    });
+
+    it('rejects a cookie older than the TTL', async () => {
+      assert.equal(await readAfter(ttl + 1), undefined);
+    });
+
+    it('rejects a sealed transaction without a creation time', async () => {
+      const key = createHash('sha256').update(SECRET).digest();
+      const cookie = await new CompactEncrypt(new TextEncoder().encode(JSON.stringify(transaction)))
+        .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
+        .encrypt(key);
+      assert.equal(await readTransactionCookie(cookie, SECRET), undefined);
+    });
   });
 });

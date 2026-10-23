@@ -3,6 +3,7 @@ import { CompactEncrypt, compactDecrypt } from 'jose';
 
 const COOKIE_NAME = 'web_session';
 const TRANSACTION_COOKIE = 'oidc_transaction';
+const TRANSACTION_TTL_SECONDS = 600;
 
 function key(secret: string): Uint8Array {
   return createHash('sha256').update(secret).digest();
@@ -56,12 +57,20 @@ export async function readSessionCookie(value: string | undefined, secret: strin
   return unseal<Session>(value, secret);
 }
 
+interface SealedTransaction extends OidcTransaction {
+  createdAt: number;
+}
+
 export async function createTransactionCookie(transaction: OidcTransaction, secret: string): Promise<string> {
-  return seal(transaction, secret);
+  return seal({ ...transaction, createdAt: Date.now() } satisfies SealedTransaction, secret);
 }
 
+// Enforce the lifetime inside the sealed value; the cookie's Max-Age is only honoured by well-behaved browsers.
 export async function readTransactionCookie(value: string | undefined, secret: string): Promise<OidcTransaction | undefined> {
-  return unseal<OidcTransaction>(value, secret);
+  const sealed = await unseal<SealedTransaction>(value, secret);
+  if (!sealed || !Number.isFinite(sealed.createdAt) || Date.now() - sealed.createdAt > TRANSACTION_TTL_SECONDS * 1000) return undefined;
+  const { createdAt: _createdAt, ...transaction } = sealed;
+  return transaction;
 }
 
-export { COOKIE_NAME, TRANSACTION_COOKIE };
+export { COOKIE_NAME, TRANSACTION_COOKIE, TRANSACTION_TTL_SECONDS };

@@ -6,6 +6,7 @@ import { safeReturnTo } from './return-to.js';
 import {
   COOKIE_NAME,
   TRANSACTION_COOKIE,
+  TRANSACTION_TTL_SECONDS,
   createSessionCookie,
   createTransactionCookie,
   pkceChallenge,
@@ -96,7 +97,7 @@ app.get('/login', async (request, response, next) => {
       verifier: randomUrlValue(),
       returnTo: safeReturnTo(request.query.returnTo),
     };
-    setCookie(response, TRANSACTION_COOKIE, await createTransactionCookie(transaction, config.sessionSecret), 600);
+    setCookie(response, TRANSACTION_COOKIE, await createTransactionCookie(transaction, config.sessionSecret), TRANSACTION_TTL_SECONDS);
     const url = new URL(oidc.authorization_endpoint);
     url.search = new URLSearchParams({
       response_type: 'code',
