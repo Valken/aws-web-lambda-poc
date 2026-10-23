@@ -7,6 +7,7 @@
     "build": "npm run clean && tsc -p tsconfig.json && npm run bundle",
     "bundle": "mkdir -p dist/web && cp -R dist/app/. dist/web/ && cp package.json package-lock.json dist/web/ && cd dist/web && npm install --omit=dev --ignore-scripts",
     "clean": "rm -rf dist cdk.out",
+    "lint": "eslint .",
     "start": "AWS_LAMBDA_HTTP_ENDPOINT=127.0.0.1:3000 node --enable-source-maps dist/app/server.js",
     "cdk": "cdk",
     "synth": "npm run build && cdk synth",
@@ -21,6 +22,7 @@
     "jose": "^6.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/cookie": "^1.0.0",
     "@types/express": "^5.0.5",
     "@types/node": "^24.10.0",
@@ -28,7 +30,9 @@
     "aws-cdk-lib": "^2.233.0",
     "constructs": "^10.4.2",
     "esbuild": "^0.25.11",
+    "eslint": "^10.13.0",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.0"
   }
 }

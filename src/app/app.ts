@@ -49,7 +49,7 @@ async function discovery(issuer: string): Promise<{ authorization_endpoint: stri
     response = await fetch(discoveryUrl);
   } catch (error) {
     const cause = error instanceof Error && error.cause instanceof Error ? ` (${error.cause.message})` : '';
-    throw new Error(`OIDC discovery request failed for ${discoveryUrl}${cause}`);
+    throw new Error(`OIDC discovery request failed for ${discoveryUrl}${cause}`, { cause: error });
   }
   if (!response.ok) throw new Error(`OIDC discovery failed with ${response.status}`);
   return response.json() as Promise<{ authorization_endpoint: string; token_endpoint: string; jwks_uri: string; end_session_endpoint?: string }>;
@@ -186,6 +186,7 @@ export function createApp(config: AppConfig): Express {
   app.get('/health', (_request, response) => response.json({ status: 'ok' }));
 
   app.use((error: unknown, _request: Request, response: Response, _next: unknown) => {
+    void _next;
     console.error(JSON.stringify({ level: 'error', message: error instanceof Error ? error.message : 'request failed' }));
     response.status(500).type('html').send(html('Server error', '<h1>Something went wrong</h1><p>Check the server logs for details.</p>'));
   });

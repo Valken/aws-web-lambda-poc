@@ -69,7 +69,8 @@ export async function createTransactionCookie(transaction: OidcTransaction, secr
 export async function readTransactionCookie(value: string | undefined, secret: string): Promise<OidcTransaction | undefined> {
   const sealed = await unseal<SealedTransaction>(value, secret);
   if (!sealed || !Number.isFinite(sealed.createdAt) || Date.now() - sealed.createdAt > TRANSACTION_TTL_SECONDS * 1000) return undefined;
-  const { createdAt: _createdAt, ...transaction } = sealed;
+  const { createdAt, ...transaction } = sealed;
+  void createdAt;
   return transaction;
 }
 

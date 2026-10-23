@@ -154,7 +154,7 @@ npx cdk deploy --all \
   -c sessionSecret="$(openssl rand -base64 32)"
 ```
 
-The outputs include the CloudFront URL, Cognito issuer, Managed Login URL, OAuth callback URL, client ID, and raw Lambda Web Function endpoint. Self-sign-up remains disabled; create users with `admin-create-user` before visiting the CloudFront URL and choosing **Sign in with Cognito**.
+The outputs include the CloudFront URL, Cognito issuer, Managed Login URL, OAuth callback URL, client ID, and raw Lambda Web Function endpoint. The OAuth client keeps both the local and CloudFront callback/logout URLs, so local development continues to work after deploying the web stack. Self-sign-up remains disabled; create users with `admin-create-user` before visiting the CloudFront URL and choosing **Sign in with Cognito**.
 
 The Web Function endpoint is configured with `IamAuth`, so a direct unsigned request should fail:
 
